@@ -186,6 +186,7 @@
     const INITIAL_SPEED = 3;
     const SPEED_INCREMENT = 0.15;
     
+    // Reclaimed Wood Palette
     const WOOD_COLORS = [
         '#8D6E63', '#6D4C41', '#5D4037', '#795548', '#A1887F', 
         '#876d54', '#654321', '#966F33'
@@ -197,7 +198,11 @@
     let currentBlock = null;
     let direction = 1;
     let speed = INITIAL_SPEED;
-    let cameraY = 0;
+    
+    // Camera Variables
+    let cameraY = 0;       // Current visible offset
+    let targetCameraY = 0; // Target offset to animate towards
+    
     let gameRunning = false;
     let perfectDrops = 0;
 
@@ -250,23 +255,34 @@
         }
 
         draw() {
+            // NOTE: Using + cameraY to shift world DOWN as we stack UP
+            const drawY = this.y + cameraY;
+            
             ctx.fillStyle = this.color;
-            ctx.fillRect(this.x, this.y - cameraY, this.width, this.height);
+            ctx.fillRect(this.x, drawY, this.width, this.height);
+            
+            // Highlight (Top edge)
             ctx.fillStyle = 'rgba(255,255,255,0.2)';
-            ctx.fillRect(this.x, this.y - cameraY, this.width, 4);
+            ctx.fillRect(this.x, drawY, this.width, 4);
+            
+            // Shadow (Bottom edge)
             ctx.fillStyle = 'rgba(0,0,0,0.1)';
-            ctx.fillRect(this.x, (this.y + this.height - 4) - cameraY, this.width, 4);
+            ctx.fillRect(this.x, (drawY + this.height - 4), this.width, 4);
+            
+            // Detail line
             ctx.strokeStyle = 'rgba(0,0,0,0.1)';
             ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(this.x + 5, this.y - cameraY + 5);
-            ctx.lineTo(this.x + this.width - 5, this.y - cameraY + 5);
+            ctx.moveTo(this.x + 5, drawY + 5);
+            ctx.lineTo(this.x + this.width - 5, drawY + 5);
             ctx.stroke();
         }
 
         update() {
             this.x += this.speedX;
-            if (this.x + this.width > CANVAS_WIDTH || this.x < 0) {
+            if (this.speedX > 0 && this.x + this.width >= CANVAS_WIDTH) {
+                this.speedX *= -1;
+            } else if (this.speedX < 0 && this.x <= 0) {
                 this.speedX *= -1;
             }
         }
@@ -292,10 +308,13 @@
         }
 
         draw() {
+            // NOTE: Using + cameraY here too
+            const drawY = this.y + cameraY;
+            
             ctx.save();
             ctx.globalAlpha = this.alpha;
             ctx.fillStyle = this.color;
-            ctx.fillRect(this.x, this.y - cameraY, this.width, this.height);
+            ctx.fillRect(this.x, drawY, this.width, this.height);
             ctx.restore();
         }
     }
@@ -316,8 +335,6 @@
             e.preventDefault();
             handleInput();
         }, {passive: false});
-
-        draw(); 
     };
 
     function startGame() {
@@ -332,7 +349,11 @@
         blocks = [];
         debrisList = [];
         speed = INITIAL_SPEED;
+        
+        // Reset Camera
         cameraY = 0;
+        targetCameraY = 0;
+        
         perfectDrops = 0;
         gameRunning = true;
 
@@ -398,9 +419,19 @@
         document.getElementById('score').innerText = score;
         speed += SPEED_INCREMENT;
         
-        if (blocks.length > 5) {
-            const targetY = (blocks.length - 5) * BLOCK_HEIGHT;
-            cameraY = targetY; 
+        // --- IMPROVED CAMERA LOGIC ---
+        // We want the current top block to stay around 60% of the screen height.
+        // Screen Y = World Y + CameraY.
+        // Target Screen Y = CANVAS_HEIGHT * 0.6.
+        // So: CANVAS_HEIGHT * 0.6 = currentBlock.y + targetCameraY
+        // targetCameraY = (CANVAS_HEIGHT * 0.6) - currentBlock.y
+        
+        const idealVisualHeight = CANVAS_HEIGHT * 0.6;
+        const potentialTargetY = idealVisualHeight - currentBlock.y;
+        
+        // Only scroll UP (increase offset), never scroll down back to base
+        if (potentialTargetY > targetCameraY) {
+            targetCameraY = potentialTargetY;
         }
 
         spawnNextBlock();
@@ -417,7 +448,12 @@
     }
 
     function animate() {
+        // Linear Interpolation for smooth camera movement
+        // Moves 10% of the way to the target every frame
+        cameraY += (targetCameraY - cameraY) * 0.1;
+
         if (!gameRunning) {
+            // Render one last static frame or fading debris
             if (debrisList.length > 0) {
                  ctx.clearRect(0, 0, canvas.width, canvas.height);
                  blocks.forEach(b => b.draw());
@@ -431,17 +467,31 @@
             }
             return;
         }
+        
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
         currentBlock.update();
-        blocks.forEach(b => b.draw());
+        
+        // Draw Stack
+        blocks.forEach(b => {
+            // Optimization: Only draw blocks that are on screen
+            if (b.y + cameraY < CANVAS_HEIGHT && b.y + cameraY > -BLOCK_HEIGHT) {
+                b.draw();
+            }
+        });
+        
+        // Draw Debris
         debrisList.forEach((d, i) => {
             d.update();
             d.draw();
-            if (d.y > CANVAS_HEIGHT + cameraY || d.alpha <= 0) {
+            // Remove debris if it falls off bottom of screen
+            if (d.y + cameraY > CANVAS_HEIGHT || d.alpha <= 0) {
                 debrisList.splice(i, 1);
             }
         });
+        
         currentBlock.draw();
+        
         requestAnimationFrame(animate);
     }
 </script>
