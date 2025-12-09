@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Reclaimed Timber Stacker</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+        :root {
+            --bg-color: #f0f4f8;
+            --text-color: #2d3748;
+            --accent-color: #c05621;
+            --wood-dark: #744210;
+            --wood-light: #975a16;
+        }
+
+        * {
+            box-sizing: border-box;
+            touch-action: none; 
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        canvas {
+            background: linear-gradient(to bottom, #ebf8ff 0%, #ffffff 100%);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Navigation Button */
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 50;
+            text-decoration: none;
+            color: var(--text-color);
+            background: rgba(255, 255, 255, 0.8);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            pointer-events: auto; /* Ensure it is clickable */
+        }
+        .back-btn:hover {
+            background: #fff;
+            color: var(--accent-color);
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            pointer-events: none;
+            text-align: center;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin: 0;
+            opacity: 0.8;
+            letter-spacing: -1px;
+        }
+
+        #score {
+            font-size: 4rem;
+            font-weight: 700;
+            color: var(--wood-dark);
+            margin: 5px 0;
+            text-shadow: 2px 2px 0px rgba(255,255,255,0.5);
+        }
+
+        #start-screen, #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(5px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            transition: opacity 0.3s;
+        }
+
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        button {
+            background-color: var(--wood-dark);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-family: inherit;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.1s, background-color 0.2s;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background-color: var(--wood-light);
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .stats {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #718096;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Back Button -->
+    <a href="index.html" class="back-btn">&larr; Back</a>
+
+    <div id="game-container">
+        <div id="ui-layer">
+            <h1>RECLAIMED STACKER</h1>
+            <div id="score">0</div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="start-screen">
+            <h1 style="font-size: 2rem; color: var(--wood-dark);">TIMBER TOWER</h1>
+            <p>Stack the reclaimed wood to build high.</p>
+            <p style="font-size: 0.8rem; opacity: 0.7;">Tap or Click to drop a block</p>
+            <button id="start-btn">START BUILD</button>
+        </div>
+
+        <div id="game-over-screen" class="hidden">
+            <h1 style="color: #e53e3e;">STRUCTURE FAILED</h1>
+            <p>Final Height: <span id="final-score">0</span></p>
+            <div class="stats" id="efficiency-display">Material Efficiency: 100%</div>
+            <button id="restart-btn">TRY AGAIN</button>
+        </div>
+    </div>
+
+<script>
+    // --- Configuration ---
+    const CANVAS_WIDTH = window.innerWidth > 600 ? 500 : window.innerWidth - 20;
+    const CANVAS_HEIGHT = window.innerHeight > 800 ? 700 : window.innerHeight - 40;
+    const BLOCK_HEIGHT = 40;
+    const START_WIDTH = 200;
+    const INITIAL_SPEED = 3;
+    const SPEED_INCREMENT = 0.15;
+    
+    const WOOD_COLORS = [
+        '#8D6E63', '#6D4C41', '#5D4037', '#795548', '#A1887F', 
+        '#876d54', '#654321', '#966F33'
+    ];
+
+    let canvas, ctx;
+    let score = 0;
+    let blocks = [];
+    let currentBlock = null;
+    let direction = 1;
+    let speed = INITIAL_SPEED;
+    let cameraY = 0;
+    let gameRunning = false;
+    let perfectDrops = 0;
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playSound(type) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+        
+        if (type === 'drop') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
+        } else if (type === 'perfect') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.setValueAtTime(880, now + 0.1);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        } else if (type === 'gameover') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100, now);
+            osc.frequency.linearRampToValueAtTime(50, now + 0.5);
+            gain.gain.setValueAtTime(0.5, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+            osc.start(now);
+            osc.stop(now + 0.5);
+        }
+    }
+
+    class Block {
+        constructor(x, y, width, color, speedX = 0) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = BLOCK_HEIGHT;
+            this.color = color;
+            this.speedX = speedX;
+        }
+
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y - cameraY, this.width, this.height);
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.fillRect(this.x, this.y - cameraY, this.width, 4);
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.fillRect(this.x, (this.y + this.height - 4) - cameraY, this.width, 4);
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(this.x + 5, this.y - cameraY + 5);
+            ctx.lineTo(this.x + this.width - 5, this.y - cameraY + 5);
+            ctx.stroke();
+        }
+
+        update() {
+            this.x += this.speedX;
+            if (this.x + this.width > CANVAS_WIDTH || this.x < 0) {
+                this.speedX *= -1;
+            }
+        }
+    }
+
+    class Debris {
+        constructor(x, y, width, height, color) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+            this.color = color;
+            this.vy = 0;
+            this.vx = (Math.random() - 0.5) * 2;
+            this.alpha = 1;
+        }
+        
+        update() {
+            this.y += this.vy;
+            this.x += this.vx;
+            this.vy += 0.5;
+            this.alpha -= 0.02;
+        }
+
+        draw() {
+            ctx.save();
+            ctx.globalAlpha = this.alpha;
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y - cameraY, this.width, this.height);
+            ctx.restore();
+        }
+    }
+
+    let debrisList = [];
+
+    window.onload = () => {
+        canvas = document.getElementById('gameCanvas');
+        ctx = canvas.getContext('2d');
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+        document.getElementById('start-btn').addEventListener('click', startGame);
+        document.getElementById('restart-btn').addEventListener('click', resetGame);
+        
+        canvas.addEventListener('mousedown', handleInput);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleInput();
+        }, {passive: false});
+
+        draw(); 
+    };
+
+    function startGame() {
+        document.getElementById('start-screen').classList.add('hidden');
+        resetGame();
+    }
+
+    function resetGame() {
+        document.getElementById('game-over-screen').classList.add('hidden');
+        score = 0;
+        document.getElementById('score').innerText = score;
+        blocks = [];
+        debrisList = [];
+        speed = INITIAL_SPEED;
+        cameraY = 0;
+        perfectDrops = 0;
+        gameRunning = true;
+
+        const baseBlock = new Block(
+            (CANVAS_WIDTH - START_WIDTH) / 2,
+            CANVAS_HEIGHT - BLOCK_HEIGHT,
+            START_WIDTH,
+            WOOD_COLORS[0]
+        );
+        blocks.push(baseBlock);
+
+        spawnNextBlock();
+        animate();
+    }
+
+    function spawnNextBlock() {
+        const prevBlock = blocks[blocks.length - 1];
+        const newY = prevBlock.y - BLOCK_HEIGHT;
+        const color = WOOD_COLORS[Math.floor(Math.random() * WOOD_COLORS.length)];
+        direction = Math.random() > 0.5 ? 1 : -1;
+        const startX = direction === 1 ? -prevBlock.width : CANVAS_WIDTH;
+        currentBlock = new Block(startX, newY, prevBlock.width, color, speed * direction);
+    }
+
+    function handleInput() {
+        if (!gameRunning) return;
+        placeBlock();
+    }
+
+    function placeBlock() {
+        const prevBlock = blocks[blocks.length - 1];
+        currentBlock.speedX = 0;
+        const dist = currentBlock.x - prevBlock.x;
+        const absDist = Math.abs(dist);
+        
+        if (absDist < 3) {
+            currentBlock.x = prevBlock.x;
+            playSound('perfect');
+            perfectDrops++;
+        } else if (absDist >= currentBlock.width) {
+            gameOver();
+            return;
+        } else {
+            playSound('drop');
+            perfectDrops = 0;
+            let remainingWidth = currentBlock.width - absDist;
+            let debrisX, debrisWidth;
+            
+            if (currentBlock.x < prevBlock.x) {
+                debrisX = currentBlock.x;
+                debrisWidth = prevBlock.x - currentBlock.x;
+                currentBlock.x = prevBlock.x;
+            } else {
+                debrisWidth = (currentBlock.x + currentBlock.width) - (prevBlock.x + prevBlock.width);
+                debrisX = currentBlock.x + remainingWidth;
+            }
+            debrisList.push(new Debris(debrisX, currentBlock.y, debrisWidth, BLOCK_HEIGHT, currentBlock.color));
+            currentBlock.width = remainingWidth;
+        }
+
+        blocks.push(currentBlock);
+        score++;
+        document.getElementById('score').innerText = score;
+        speed += SPEED_INCREMENT;
+        
+        if (blocks.length > 5) {
+            const targetY = (blocks.length - 5) * BLOCK_HEIGHT;
+            cameraY = targetY; 
+        }
+
+        spawnNextBlock();
+    }
+
+    function gameOver() {
+        gameRunning = false;
+        playSound('gameover');
+        const finalWidth = blocks[blocks.length - 1].width;
+        const efficiency = Math.round((finalWidth / START_WIDTH) * 100);
+        document.getElementById('final-score').innerText = score;
+        document.getElementById('efficiency-display').innerText = `Material Efficiency: ${efficiency}%`;
+        document.getElementById('game-over-screen').classList.remove('hidden');
+    }
+
+    function animate() {
+        if (!gameRunning) {
+            if (debrisList.length > 0) {
+                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                 blocks.forEach(b => b.draw());
+                 debrisList.forEach((d, i) => {
+                    d.update();
+                    d.draw();
+                    if (d.alpha <= 0) debrisList.splice(i, 1);
+                });
+                if (currentBlock) currentBlock.draw();
+                requestAnimationFrame(animate);
+            }
+            return;
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        currentBlock.update();
+        blocks.forEach(b => b.draw());
+        debrisList.forEach((d, i) => {
+            d.update();
+            d.draw();
+            if (d.y > CANVAS_HEIGHT + cameraY || d.alpha <= 0) {
+                debrisList.splice(i, 1);
+            }
+        });
+        currentBlock.draw();
+        requestAnimationFrame(animate);
+    }
+</script>
+</body>
+</html>
