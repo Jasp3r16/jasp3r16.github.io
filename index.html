@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio | Generative Design</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap');
+
+        :root {
+            --bg-color: #f0f4f8;
+            --text-color: #2d3748;
+            --accent-color: #c05621; /* Timber orange */
+            --card-bg: #ffffff;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.6;
+        }
+
+        /* Header Section */
+        header {
+            padding: 60px 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        /* Grid Layout */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        /* Project Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: inherit;
+            border: 1px solid transparent;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+            border-color: var(--accent-color);
+        }
+
+        .card-tag {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-color);
+            font-weight: 700;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .card h2 {
+            margin: 0 0 10px 0;
+            font-size: 1.5rem;
+        }
+
+        .card p {
+            font-size: 0.95rem;
+            color: #4a5568;
+            margin-bottom: 20px;
+        }
+
+        .arrow {
+            align-self: flex-end;
+            font-weight: 700;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px;
+            font-size: 0.8rem;
+            color: #a0aec0;
+            margin-top: 40px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>DEEP GENERATIVE DESIGN</h1>
+        <div class="subtitle">Building Technology Thesis &middot; TU Delft</div>
+        <p style="margin-top: 20px; max-width: 600px; margin-left: auto; margin-right: auto;">
+            Exploring the intersection of reclaimed timber and computational design workflows.
+        </p>
+    </header>
+
+    <div class="container">
+        <!-- GAME CARD -->
+        <a href="game.html" class="card">
+            <div>
+                <span class="card-tag">Interactive Demo</span>
+                <h2>Reclaimed Stacker</h2>
+                <p>A physics-based simulation demonstrating material efficiency constraints in vertical assembly. Stack reclaimed timber blocks without structural failure.</p>
+            </div>
+            <div class="arrow">PLAY NOW &rarr;</div>
+        </a>
+
+        <!-- THESIS PLACEHOLDER -->
+        <a href="#" class="card" onclick="alert('Thesis section coming soon!')">
+            <div>
+                <span class="card-tag">Research</span>
+                <h2>Thesis Workflow</h2>
+                <p>Documentation of the Deep Generative Design process. Analyzing timber datasets for automated architectural generation.</p>
+            </div>
+            <div class="arrow">READ MORE &rarr;</div>
+        </a>
+
+        <!-- ABOUT PLACEHOLDER -->
+        <a href="#" class="card" onclick="alert('About section coming soon!')">
+            <div>
+                <span class="card-tag">Profile</span>
+                <h2>About Me</h2>
+                <p>Building Technology student specializing in circular material lifecycles and algorithmic design.</p>
+            </div>
+            <div class="arrow">CONTACT &rarr;</div>
+        </a>
+    </div>
+
+    <footer>
+        &copy; 2025 Reclaimed Generative Design
+    </footer>
+
+</body>
+</html>
